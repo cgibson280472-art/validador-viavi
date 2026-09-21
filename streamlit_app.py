@@ -46,7 +46,7 @@ with col_m:
     )
     if imgs_medicion:
         for idx, img in enumerate(imgs_medicion):
-            st.image(img, caption=f"Medición #{idx+1}", use_column_width=True)
+            st.image(img, caption=f"Medición #{idx+1}", use_container_width=True)
 
 st.markdown("---")
 
