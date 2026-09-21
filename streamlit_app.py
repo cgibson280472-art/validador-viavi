@@ -34,7 +34,7 @@ with col_l:
         key="lapida",
     )
     if img_lapida:
-        st.image(img_lapida, caption="Lápida cargada", use_column_width=True)
+        st.image(img_lapida, caption="Lápida cargada", use_container_width=True)
 
 with col_m:
     st.subheader("2. Capturas del Viavi ONX-630")
