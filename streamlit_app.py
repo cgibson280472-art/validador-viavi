@@ -59,9 +59,9 @@ if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
                 for f in archivos_viavi:
                     contents.append(Image.open(f))
                 
-                # Usando el modelo 1.5-flash estable para la SDK nueva
+                # Usando el identificador con el formato correcto requerido por el SDK nuevo
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-2.5-flash",
                     contents=contents
                 )
                 
@@ -70,5 +70,15 @@ if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
                 st.write(response.text)
                 
         except Exception as e:
-            st.error(f"Ocurrió un error al procesar las imágenes con la IA: {e}")
-            st.info("Consejo: Asegúrate de que tu API Key sea correcta y de que las imágenes muestren claramente los números y puertos.")
+            # Intento de respaldo automático con otro identificador si el primero falla
+            try:
+                response = client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=contents
+                )
+                st.success("¡Validación completada con éxito!")
+                st.markdown("### Resultados del Análisis:")
+                st.write(response.text)
+            except Exception as e2:
+                st.error(f"Ocurrió un error al procesar las imágenes con la IA: {e2}")
+                st.info("Consejo: Asegúrate de que tu API Key sea correcta y de que las imágenes muestren claramente los números y puertos.")
