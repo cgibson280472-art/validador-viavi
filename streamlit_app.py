@@ -73,7 +73,7 @@ if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
             # Intento de respaldo automático con otro identificador si el primero falla
             try:
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-2.5-flash",
                     contents=contents
                 )
                 st.success("¡Validación completada con éxito!")
