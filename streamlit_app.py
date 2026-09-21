@@ -101,7 +101,7 @@ if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
                 contents.append(prompt)
 
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash", contents=contents
+                    model="gemini-1.5-flash", contents=contents
                 )
 
                 texto_respuesta = response.text.strip()
