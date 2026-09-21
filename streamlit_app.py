@@ -55,14 +55,14 @@ if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
                 
                 # Preparar la lista de contenidos con las imágenes cargadas
                 contents = [
-                    "Actúa como un ingeniero experto en redes HFC. Analiza la imagen de la lápida del nodo para extraer los valores de referencia y compáralos con las capturas de los puertos del medidor Viavi ONX-630 proporcionadas. Evalúa si las desviaciones se encuentran dentro de la tolerancia permitida.",
+                    f"Actúa como un ingeniero experto en redes HFC. Analiza la imagen de la lápida del nodo para extraer los valores de referencia y compáralos con las capturas de los puertos del medidor Viavi ONX-630 proporcionadas. Evalúa si las desviaciones se encuentran dentro de la tolerancia permitida de ±{tolerancia} dB.",
                     Image.open(archivo_lapida)
                 ]
                 
                 for f in archivos_viavi:
                     contents.append(Image.open(f))
                 
-                # Llamada al modelo actual y estable
+                # Llamada usando el modelo actual requerido por la API
                 response = client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=contents
