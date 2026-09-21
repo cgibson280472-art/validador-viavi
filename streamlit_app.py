@@ -1,162 +1,77 @@
-import json
-import os
-import pandas as pd
 import streamlit as st
 from google import genai
-from google.genai import types
+from PIL import Image
 
+# Configuración de la página
 st.set_page_config(
-    page_title="Validador IA HFC - Viavi ONX-630", layout="wide"
+    page_title="Validador Inteligente HFC (Lápida vs. Viavi ONX-630)",
+    layout="wide"
 )
+
+# Barra lateral para credenciales y parámetros
+st.sidebar.title("🔑 Configuración de IA")
+
+# Obtener API Key de los Secrets o de la barra lateral
+api_key = st.sidebar.text_input(
+    "Gemini API Key", 
+    type="password", 
+    value=st.secrets.get("GEMINI_API_KEY", "") if "GEMINI_API_KEY" in st.secrets else ""
+)
+
+tolerancia = st.sidebar.slider("Tolerancia Permitida (dB)", 0.5, 5.0, 2.0, 0.25)
 
 st.title("📡 Validador Inteligente HFC (Lápida vs. Viavi ONX-630)")
-st.markdown(
-    "Sube la foto de la **lápida del nodo** y las **capturas del medidor**. La IA extraerá los valores y evaluará la tolerancia de **±2.0 dB**."
-)
+st.markdown("Sube la foto de la lápida del nodo y las capturas del medidor. La IA extraerá los valores y evaluará la tolerancia de $\\pm 2.0\\text{ dB}$.")
 
-# --- CONFIGURACIÓN DE LA API KEY EN LA BARRA LATERAL ---
-st.sidebar.header("🔑 Configuración de IA")
-api_key_input = st.sidebar.text_input(
-    "Gemini API Key", type="password", value=os.environ.get("GEMINI_API_KEY", "")
-)
-tolerancia = st.sidebar.slider(
-    "Tolerancia Permitida (dB)", min_value=0.5, max_value=5.0, value=2.0, step=0.5
-)
+col1, col2 = st.columns(2)
 
-# --- SECCIÓN DE CARGA DE ARCHIVOS ---
-col_l, col_m = st.columns(2)
-
-with col_l:
+with col1:
     st.subheader("1. Lápida de Referencia")
-    img_lapida = st.file_uploader(
-        "Sube la imagen de la lápida del nodo",
-        type=["png", "jpg", "jpeg"],
-        key="lapida",
-    )
-    if img_lapida:
-        st.image(img_lapida, caption="Lápida cargada", use_container_width=True)
+    archivo_lapida = st.file_uploader("Sube la imagen de la lápida del nodo", type=["png", "jpg", "jpeg"], key="lapida")
 
-with col_m:
+with col2:
     st.subheader("2. Capturas del Viavi ONX-630")
-    imgs_medicion = st.file_uploader(
-        "Sube las capturas de los puertos (P1, P2, P3, P4)",
-        type=["png", "jpg", "jpeg"],
-        accept_multiple_files=True,
-        key="mediciones",
-    )
-    if imgs_medicion:
-        for idx, img in enumerate(imgs_medicion):
-            st.image(img, caption=f"Medición #{idx+1}", use_container_width=True)
+    archivos_viavi = st.file_uploader("Sube las capturas de los puertos (P1, P2, P3, P4)", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="viavi")
 
-st.markdown("---")
+if archivo_lapida:
+    img_lapida = Image.open(archivo_lapida)
+    st.image(img_lapida, caption="Lápida cargada", use_container_width=True)
 
-# --- PROCESAMIENTO CON INTELIGENCIA ARTIFICIAL ---
+if archivos_viavi:
+    for idx, img_file in enumerate(archivos_viavi):
+        img = Image.open(img_file)
+        st.image(img, caption=f"Medición #{idx+1}", use_container_width=True)
+
 if st.button("🚀 Procesar Imágenes con IA y Validar", type="primary"):
-    if not api_key_input:
-        st.error(
-            "⚠️ Por favor, ingresa tu API Key de Gemini en la barra lateral."
-        )
-    elif not img_lapida or not imgs_medicion:
-        st.warning(
-            "⚠️ Debes subir tanto la imagen de la lápida como al menos una captura de medición."
-        )
+    if not api_key:
+        st.error("Por favor, ingresa tu API Key de Gemini en la barra lateral o en los Secrets.")
+    elif not archivo_lapida or not archivos_viavi:
+        st.warning("Debes subir tanto la foto de la lápida como al menos una captura del medidor Viavi.")
     else:
-        with st.spinner(
-            "🤖 Analizando píxeles de las imágenes y extrayendo niveles..."
-        ):
-            try:
-                client = genai.Client(api_key=api_key_input)
-                contents = []
-
-                # Añadir la lápida
-                img_lapida_bytes = img_lapida.getvalue()
-                contents.append(
-                    types.Part.from_bytes(
-                        data=img_lapida_bytes, mime_type="image/jpeg"
-                    )
-                )
-
-                # Añadir las mediciones
-                for img_med in imgs_medicion:
-                    contents.append(
-                        types.Part.from_bytes(
-                            data=img_med.getvalue(), mime_type="image/jpeg"
-                        )
-                    )
-
-                prompt = """
-                Analiza estas imágenes de una red HFC. La primera imagen es la "lápida de referencia" que contiene los valores teóricos de diseño por puerto y frecuencia (por ejemplo, P1, P2, P3, P4 y frecuencias como 379.250 MHz y 865.250 MHz). Las siguientes imágenes son capturas de pantalla del equipo de medición Viavi ONX-630 de los puertos correspondientes.
+        try:
+            with st.spinner("Analizando imágenes con Inteligencia Artificial..."):
+                # Inicializar el cliente moderno de Gemini
+                client = genai.Client(api_key=api_key)
                 
-                Tu tarea es extraer los datos y devolverlos estrictamente en formato JSON válido (un array de objetos), sin texto adicional antes ni después, con esta estructura exacta para cada registro comparado:
-                [
-                  {
-                    "Puerto": "P1",
-                    "Frecuencia": 379.25,
-                    "Ref_Lapida": 28.2,
-                    "Medido_Viavi": 26.5
-                  }
+                # Preparar la lista de contenidos con las imágenes cargadas
+                contents = [
+                    "Actúa como un ingeniero experto en redes HFC. Analiza la imagen de la lápida del nodo para extraer los valores de referencia y compáralos con las capturas de los puertos del medidor Viavi ONX-630 proporcionadas. Evalúa si las desviaciones se encuentran dentro de la tolerancia permitida.",
+                    Image.open(archivo_lapida)
                 ]
-                Extrae toda la información de puertos y frecuencias que logres identificar en ambas fuentes.
-                """
-                contents.append(prompt)
-
+                
+                for f in archivos_viavi:
+                    contents.append(Image.open(f))
+                
+                # Llamada al modelo actual y estable
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash", contents=contents
+                    model="gemini-2.5-flash",
+                    contents=contents
                 )
-
-                texto_respuesta = response.text.strip()
-                if texto_respuesta.startswith("```json"):
-                    texto_respuesta = texto_respuesta[7:]
-                if texto_respuesta.endswith("```"):
-                    texto_respuesta = texto_respuesta[:-3]
-
-                datos_extraidos = json.loads(texto_respuesta.strip())
-                df_res = pd.DataFrame(datos_extraidos)
-
-                # Calcular diferencias y validar tolerancia
-                df_res["Diferencia (dB)"] = (
-                    df_res["Medido_Viavi"] - df_res["Ref_Lapida"]
-                ).round(2)
-                df_res["Dif Absoluta"] = df_res["Diferencia (dB)"].abs()
-                df_res["Estado"] = df_res["Dif Absoluta"].apply(
-                    lambda x: (
-                        "✅ En Rango" if x <= tolerancia else "❌ Fuera de Rango"
-                    )
-                )
-
-                st.success("✨ ¡Extracción y análisis completados con éxito!")
-
-                st.subheader("📊 Tabla Comparativa de Validación")
-                st.dataframe(
-                    df_res[
-                        [
-                            "Puerto",
-                            "Frecuencia",
-                            "Ref_Lapida",
-                            "Medido_Viavi",
-                            "Diferencia (dB)",
-                            "Estado",
-                        ]
-                    ],
-                    use_container_width=True,
-                )
-
-                fuera_de_rango = len(
-                    df_res[df_res["Estado"] == "❌ Fuera de Rango"]
-                )
-                if fuera_de_rango > 0:
-                    st.error(
-                        f"⚠️ El nodo NO APROBÓ. Hay {fuera_de_rango} puntos que superan la tolerancia de ±{tolerancia} dB."
-                    )
-                else:
-                    st.success(
-                        "🎉 ¡APROBADO! Todas las mediciones cumplen perfectamente con la lápida."
-                    )
-
-            except Exception as e:
-                st.error(
-                    f"❌ Ocurrió un error al procesar las imágenes con la IA: {e}"
-                )
-                st.info(
-                    "Consejo: Asegúrate de que tu API Key sea correcta y de que las imágenes muestren claramente los números y puertos."
-                )
+                
+                st.success("¡Validación completada con éxito!")
+                st.markdown("### Resultados del Análisis:")
+                st.write(response.text)
+                
+        except Exception as e:
+            st.error(f"Ocurrió un error al procesar las imágenes con la IA: {e}")
+            st.info("Consejo: Asegúrate de que tu API Key sea correcta y de que las imágenes muestren claramente los números y puertos.")
